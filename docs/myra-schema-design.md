@@ -2,7 +2,7 @@
 
 This document outlines the structure and purpose of the `.mvpe.yaml` schema file used in MVP.Express to define RPC
 services, methods, and binary message schemas — inspired by Protocol Buffers and gRPC, but designed to work directly
-with SBE (Simple Binary Encoding).
+with MYRA (Memory Yield, Rapid Access) codec.
 
 ---
 
@@ -14,7 +14,7 @@ Unlike gRPC which uses Protobuf to define services and messages, MVP.Express def
 - Strong typing via primitive and complex types
 - Message schemas for request/response
 - Explicit message IDs (for routing and encoding)
-- Compatibility with SBE XML schema generation
+- Automatic layout optimization through MYRA codegen
 
 MVP.Express avoids text-based serialization altogether — focusing on **binary-first, high-performance, low-latency RPC
 **.

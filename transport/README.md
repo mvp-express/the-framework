@@ -6,4 +6,4 @@ This module provides low-level TCP-based transport using Java 21 and Project Pan
 - Handles message framing, I/O, backpressure and reconnect
 - Optimized for virtual threads
 
-Depends on `codec` for binary serialization.
+Depends on `codec` for MYRA binary serialization.
