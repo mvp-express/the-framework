@@ -1,3 +1,5 @@
+import jdk.tools.jlink.resources.plugins
+
 plugins {
     java
     kotlin("jvm") version "1.9.0" apply false // Just for CLI/codegen
@@ -30,7 +32,18 @@ tasks.register("mvpegen") {
         javaexec {
             mainClass.set("express.mvp.cli.MainKt")
             classpath = sourceSets["main"].runtimeClasspath
-            args = listOf("generate", "mvpe.schema.yaml", "-o", "examples/account-service/src/main/java")
+
+            // Compose args with optional lock settings
+            val baseArgs = mutableListOf("generate", "mvpe.schema.yaml", "-o", "examples/account-service/src/main/java")
+            val lockMode = project.findProperty("mvpe.lockMode") as? String // "WRITE" | "CHECK" | "OFF"
+            val lockFile = project.findProperty("mvpe.lockFile") as? String // default ".mvpe.ids.lock"
+            if (!lockMode.isNullOrBlank()) {
+                baseArgs.addAll(listOf("--lock-mode", lockMode))
+            }
+            if (!lockFile.isNullOrBlank()) {
+                baseArgs.addAll(listOf("--lock-file", lockFile))
+            }
+            args = baseArgs
         }
     }
 }
