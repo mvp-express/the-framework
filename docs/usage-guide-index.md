@@ -1,19 +1,21 @@
 # MVP.Express Usage Guide Index
 
-Welcome to the comprehensive usage documentation for MVP.Express - a high-performance, zero-copy, broker-less Java RPC framework.
+Welcome to the comprehensive usage documentation for MVP.Express - a high-performance, zero-copy, broker-less Java RPC
+framework.
 
 ---
 
 ## 📚 Documentation Overview
 
-This documentation provides complete guidance on using MVP.Express for building high-performance RPC services in Java 21+.
+This documentation provides complete guidance on using MVP.Express for building high-performance RPC services in Java
+21+.
 
 ### 🎯 What is MVP.Express?
 
 MVP.Express (Managed Virtual Procedure on an Express link) is a modern Java RPC framework that provides:
 
 - **Zero-copy performance** using Project Panama's MemorySegment
-- **MYRA codec** for efficient binary serialization
+- **MYRA (Memory yielded, Rapid Access) codec** for efficient binary serialization
 - **Broker-less architecture** for direct service-to-service communication
 - **Code generation** from simple YAML schemas
 - **GC-free operation** for sustained high throughput
@@ -23,9 +25,11 @@ MVP.Express (Managed Virtual Procedure on an Express link) is a modern Java RPC 
 ## 📖 Usage Guides
 
 ### 1. [Codec Usage Guide](codec-usage-guide.md)
+
 **Complete guide to using the MVP.Express codec module**
 
 Learn how to:
+
 - Set up zero-copy message encoding/decoding
 - Use the MYRA codec for Java records
 - Manage memory pools for GC-free operation
@@ -33,6 +37,7 @@ Learn how to:
 - Optimize performance and troubleshoot issues
 
 **Key Topics:**
+
 - ZeroCopyMyraCodec setup and usage
 - MessageEnvelope framing protocol
 - MemorySegmentPool configuration
@@ -40,9 +45,11 @@ Learn how to:
 - Performance characteristics and monitoring
 
 ### 2. [Codegen Usage Guide](codegen-usage-guide.md)
+
 **Complete guide to generating Java code from YAML schemas**
 
 Learn how to:
+
 - Define RPC services in YAML schemas
 - Generate Java interfaces and records
 - Integrate with build systems
@@ -50,6 +57,7 @@ Learn how to:
 - Follow best practices for schema design
 
 **Key Topics:**
+
 - YAML schema structure and syntax
 - CodegenOrchestrator API usage
 - Generated code structure and patterns
@@ -91,7 +99,9 @@ Use the codegen module to generate Java interfaces and records:
 
 ```java
 CodegenOrchestrator orchestrator = new CodegenOrchestrator("com.example.services");
-orchestrator.generateFromFile(schemaFile, outputDir);
+orchestrator.
+
+generateFromFile(schemaFile, outputDir);
 ```
 
 ### 3. Implement Your Service
@@ -125,11 +135,15 @@ Use the codec to handle RPC messages:
 ```java
 // Encoding
 MessageEnvelope envelope = MessageEnvelope.allocate(256, pool);
-codec.encodeMessage(request, envelope);
+codec.
+
+encodeMessage(request, envelope);
 
 // Decoding  
 Object decodedMessage = codec.decodeMessage(envelope);
-envelope.release(); // Always release back to pool
+envelope.
+
+release(); // Always release back to pool
 ```
 
 ---
@@ -155,16 +169,19 @@ envelope.release(); // Always release back to pool
 ## 🎯 Key Features and Benefits
 
 ### Zero-Copy Performance
+
 - **No GC pressure**: All operations use pooled memory
 - **Direct memory access**: Panama-based MemorySegment operations
 - **Sub-microsecond latency**: Typical encode/decode in ~2.5μs
 
 ### Developer-Friendly
+
 - **Simple YAML schemas**: Define services like gRPC/Protobuf
 - **Automatic code generation**: No manual serialization code
 - **Type-safe interfaces**: Generated Java records and interfaces
 
 ### Production-Ready
+
 - **Comprehensive validation**: Schema and runtime error checking
 - **Resource management**: Automatic memory pool management
 - **Performance monitoring**: Built-in metrics and diagnostics
@@ -173,20 +190,20 @@ envelope.release(); // Always release back to pool
 
 ## 📊 Performance Characteristics
 
-| Operation | Typical Time | Memory Allocation |
-|-----------|--------------|-------------------|
-| Record encode | ~2.5μs | Zero (pooled) |
-| Record decode | ~3.0μs | Minimal |
-| String encoding | ~100ns | Zero |
-| Memory pool ops | ~50ns | Zero |
+| Operation       | Typical Time | Memory Allocation |
+|-----------------|--------------|-------------------|
+| Record encode   | ~2.5μs       | Zero (pooled)     |
+| Record decode   | ~3.0μs       | Minimal           |
+| String encoding | ~100ns       | Zero              |
+| Memory pool ops | ~50ns        | Zero              |
 
 ### Comparison with Alternatives
 
-| Framework | Latency | Throughput | GC Impact |
-|-----------|---------|------------|-----------|
-| MVP.Express | ~2.5μs | Very High | None |
-| gRPC | ~50μs | High | Moderate |
-| REST/JSON | ~500μs | Medium | High |
+| Framework   | Latency | Throughput | GC Impact |
+|-------------|---------|------------|-----------|
+| MVP.Express | ~2.5μs  | Very High  | None      |
+| gRPC        | ~50μs   | High       | Moderate  |
+| REST/JSON   | ~500μs  | Medium     | High      |
 
 ---
 
@@ -195,6 +212,7 @@ envelope.release(); // Always release back to pool
 ### Build System Integration
 
 **Gradle:**
+
 ```kotlin
 tasks.register("generateRpcCode") {
     // Generate code from schemas
@@ -202,7 +220,9 @@ tasks.register("generateRpcCode") {
 ```
 
 **Maven:**
+
 ```xml
+
 <plugin>
     <groupId>org.codehaus.mojo</groupId>
     <artifactId>exec-maven-plugin</artifactId>
@@ -213,12 +233,14 @@ tasks.register("generateRpcCode") {
 ### Runtime Integration
 
 **Server Side:**
+
 ```java
 // Register service implementation
-server.register(AccountService.class, new AccountServiceImpl());
+server.register(AccountService .class, new AccountServiceImpl());
 ```
 
 **Client Side:**
+
 ```java
 // Get service proxy
 AccountService service = client.getService(AccountService.class);
@@ -232,16 +254,16 @@ GetBalanceResponse response = service.getBalance(request);
 ### Common Issues
 
 1. **Memory Leaks**
-   - Always call `envelope.release()` after use
-   - Monitor pool usage with `pool.getAvailableCount()`
+    - Always call `envelope.release()` after use
+    - Monitor pool usage with `pool.getAvailableCount()`
 
 2. **Schema Validation Errors**
-   - Ensure all referenced message types are defined
-   - Use unique IDs for methods and services
+    - Ensure all referenced message types are defined
+    - Use unique IDs for methods and services
 
 3. **Performance Issues**
-   - Pre-warm reflection cache for better performance
-   - Use appropriate pool sizes for your workload
+    - Pre-warm reflection cache for better performance
+    - Use appropriate pool sizes for your workload
 
 ### Debugging Tips
 
@@ -254,15 +276,18 @@ GetBalanceResponse response = service.getBalance(request);
 ## 📚 Additional Resources
 
 ### Design Documentation
+
 - [MYRA Schema Design](myra-schema-design.md) - Schema structure and best practices
 - [Zero-Copy Analysis](zero-copy-analysis.md) - Performance analysis and verification
 - [Codec Comparison](codec-comparison.md) - Comparison with other serialization formats
 
 ### Technical Deep Dives
+
 - [MYRA Codec Improvements](myra-codec-improvements.md) - Technical implementation details
 - [Reflection Caching Optimization](reflection-caching-optimization.md) - Performance optimizations
 
 ### Examples
+
 - [Account Service Example](../examples/account-service/) - Complete working example
 - [Generated Code Samples](../examples/) - Various schema examples
 
@@ -280,21 +305,25 @@ GetBalanceResponse response = service.getBalance(request);
 ## 💡 Best Practices Summary
 
 ### Schema Design
+
 - Use clear, descriptive names for services and methods
 - Organize related functionality into focused services
 - Use meaningful ID ranges for different service categories
 
 ### Performance Optimization
+
 - Always use memory pools for zero-copy operation
 - Pre-warm caches during application startup
 - Monitor resource usage and pool statistics
 
 ### Resource Management
+
 - Use try-with-resources or finally blocks for envelope cleanup
 - Configure appropriate pool sizes for your workload
 - Monitor for memory leaks in long-running applications
 
 ### Development Workflow
+
 - Validate schemas early in the build process
 - Generate code as part of your build pipeline
 - Use comprehensive error handling and logging
