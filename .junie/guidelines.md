@@ -4,7 +4,7 @@
 
 **MVP-Express** is a modern, open-source, broker-less, high-performance Java RPC framework that uses:
 
-- **Simple Binary Encoding (SBE)** for payload encoding
+- **Memory Yield, Rapid Access Codec (MYRA)** for payload encoding/decoding
 - **Java 21+ features** (e.g., virtual threads, structured concurrency)
 - **Project Panama** for safe off-heap memory access (replacing Unsafe)
 
@@ -12,7 +12,7 @@
 
 - ✅ Minimal latency and high throughput
 - ✅ Broker-less and dependency-light
-- ✅ Unsafe-free (except SBE optionally)
+- ✅ Unsafe-free with custom MYRA codec
 - ✅ Dev-friendly like gRPC (stub generation, method schemas)
 - ✅ Designed for distributed microservices (HA, retries, dedup, etc.)
 - ✅ Fully embeddable, no sidecar
@@ -25,7 +25,7 @@
 
 - Define RPC services and methods in schema
 - Generate Java interfaces, server adapters, and client stubs
-- Use SBE for message encoding
+- Use MYRA for message encoding
 - Use correlation ID and method ID in headers
 - Support synchronous (`FooResponse foo(FooRequest)`) and async (`CompletableFuture<FooResponse>`) calls
 
@@ -44,7 +44,7 @@
 ### Constraints
 
 - Java 21+ only
-- No use of `sun.misc.Unsafe` except inside SBE (opt-in only)
+- No use of `sun.misc.Unsafe`
 - No Netty, no Aeron, no Chronicle
 - Transport must be broker-less (TCP, shared memory, UDS)
 - Fully pluggable architecture
@@ -564,9 +564,9 @@ serialization**, significantly more efficient than Java RMI or JSON/XML.
 ```xml
 <!-- Add Hessian dependency -->
 <dependency>
-  <groupId>com.caucho</groupId>
-  <artifactId>hessian</artifactId>
-  <version>4.0.38</version>
+    <groupId>com.caucho</groupId>
+    <artifactId>hessian</artifactId>
+    <version>4.0.38</version>
 </dependency>
 ```
 
@@ -614,7 +614,9 @@ Object obj = in.readObject(); // Deserialize Java object
 ```java
 Socket socket = new Socket("localhost", 9000);
 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-out.writeObject(new Request(...)); // Serialize Java object
+out.
+
+writeObject(new Request(...)); // Serialize Java object
 ```
 
 ---
@@ -749,20 +751,21 @@ You generate a **Java dynamic proxy** that implements the shared interface, but 
 - Returns the result
 
 ```java
+
 @SuppressWarnings("unchecked")
 public static <T> T createProxy(Class<T> iface, Socket socket) {
     return (T) Proxy.newProxyInstance(
-        iface.getClassLoader(),
-        new Class<?>[]{iface},
-        (proxy, method, args) -> {
-            ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-            out.writeUTF(method.getName());
-            out.writeObject(method.getParameterTypes());
-            out.writeObject(args);
+            iface.getClassLoader(),
+            new Class<?>[]{iface},
+            (proxy, method, args) -> {
+                ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+                out.writeUTF(method.getName());
+                out.writeObject(method.getParameterTypes());
+                out.writeObject(args);
 
-            ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-            return in.readObject(); // return result
-        }
+                ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+                return in.readObject(); // return result
+            }
     );
 }
 ```
@@ -1059,6 +1062,7 @@ You're now comparing:
 **vs.**
 
 ### 🔴 [SBE (Simple Binary Encoding)](https://github.com/aeron-io/simple-binary-encoding) — a **high-performance,
+
 low-latency binary encoding** optimized for trading systems and real-time apps.
 
 ---
@@ -1256,27 +1260,28 @@ public class ServerMain {
 
 ```java
 // client/RpcProxyFactory.java
+
 import java.lang.reflect.*;
 
 public class RpcProxyFactory {
     @SuppressWarnings("unchecked")
     public static <T> T create(Class<T> iface, Socket socket) {
         return (T) Proxy.newProxyInstance(
-            iface.getClassLoader(),
-            new Class[]{iface},
-            (proxy, method, args) -> {
-                OutputStream out = socket.getOutputStream();
-                InputStream in = socket.getInputStream();
+                iface.getClassLoader(),
+                new Class[]{iface},
+                (proxy, method, args) -> {
+                    OutputStream out = socket.getOutputStream();
+                    InputStream in = socket.getInputStream();
 
-                // Serialize input using SBE (or simple binary for demo)
-                byte[] buffer = new byte[32];
-                System.arraycopy(((String) args[0]).getBytes(), 0, buffer, 0, ((String) args[0]).length());
-                out.write(buffer);
+                    // Serialize input using SBE (or simple binary for demo)
+                    byte[] buffer = new byte[32];
+                    System.arraycopy(((String) args[0]).getBytes(), 0, buffer, 0, ((String) args[0]).length());
+                    out.write(buffer);
 
-                // Deserialize response
-                byte[] response = in.readNBytes(128);
-                return new String(response).trim();
-            });
+                    // Deserialize response
+                    byte[] response = in.readNBytes(128);
+                    return new String(response).trim();
+                });
     }
 }
 ```
@@ -1717,7 +1722,7 @@ SBE's goal is **ultra-low-latency, zero-GC, deterministic binary encoding/decodi
 If you inspect generated encoders/decoders, you'll see:
 
 ```java
-UNSAFE.putInt(null, address + offset, value);
+UNSAFE.putInt(null,address +offset, value);
 ```
 
 or
@@ -1806,11 +1811,12 @@ To simulate RPC-like semantics using SBE, you can:
 ### 1. **Define Messages by Operation**
 
 ```xml
+
 <messageSchema>
-  <message name="GetAccountDetailsRequest" id="1" />
-  <message name="GetAccountDetailsResponse" id="2" />
-  <message name="TransferFundsRequest" id="3" />
-  <message name="TransferFundsResponse" id="4" />
+    <message name="GetAccountDetailsRequest" id="1"/>
+    <message name="GetAccountDetailsResponse" id="2"/>
+    <message name="TransferFundsRequest" id="3"/>
+    <message name="TransferFundsResponse" id="4"/>
 </messageSchema>
 ```
 
@@ -1819,9 +1825,13 @@ This mimics service-method pairs.
 Then you create an envelope or dispatcher:
 
 ```java
-switch (messageHeader.templateId()) {
-    case 1 -> service.getAccountDetails(request);
-    case 3 -> service.transferFunds(request);
+switch(messageHeader.templateId()){
+        case 1->service.
+
+getAccountDetails(request);
+    case 3->service.
+
+transferFunds(request);
 }
 ```
 
@@ -1830,6 +1840,7 @@ switch (messageHeader.templateId()) {
 Define a custom "header" or envelope message:
 
 ```xml
+
 <message name="RpcEnvelope" id="100">
     <field name="methodId" id="1" type="uint16"/>
     <field name="correlationId" id="2" type="uint64"/>
@@ -2023,17 +2034,18 @@ without compromising SBE’s speed.
 SBE does not support `service` definitions, but you could create a **pre-processing step** or wrapper DSL:
 
 ```xml
+
 <sbe-rpc>
-  <service name="AccountService" id="1">
-    <method name="GetAccountDetails" id="1">
-      <request message="GetAccountDetailsRequest"/>
-      <response message="GetAccountDetailsResponse"/>
-    </method>
-    <method name="TransferFunds" id="2">
-      <request message="TransferFundsRequest"/>
-      <response message="TransferFundsResponse"/>
-    </method>
-  </service>
+    <service name="AccountService" id="1">
+        <method name="GetAccountDetails" id="1">
+            <request message="GetAccountDetailsRequest"/>
+            <response message="GetAccountDetailsResponse"/>
+        </method>
+        <method name="TransferFunds" id="2">
+            <request message="TransferFundsRequest"/>
+            <response message="TransferFundsResponse"/>
+        </method>
+    </service>
 </sbe-rpc>
 ```
 
@@ -2053,6 +2065,7 @@ From the above, generate:
 ```java
 interface AccountService {
     GetAccountDetailsResponse getAccountDetails(GetAccountDetailsRequest req);
+
     TransferFundsResponse transferFunds(TransferFundsRequest req);
 }
 ```
@@ -2081,10 +2094,11 @@ All the encoding/decoding, correlation ID matching, template ID routing, etc., i
 Define a universal envelope in SBE schema:
 
 ```xml
+
 <message name="RpcEnvelope" id="999">
-  <field name="serviceId" id="1" type="uint16"/>
-  <field name="methodId" id="2" type="uint16"/>
-  <field name="correlationId" id="3" type="uint64"/>
+    <field name="serviceId" id="1" type="uint16"/>
+    <field name="methodId" id="2" type="uint16"/>
+    <field name="correlationId" id="3" type="uint64"/>
 </message>
 ```
 
@@ -2099,6 +2113,7 @@ Write transports as SPI plug-ins:
 ```java
 interface RpcTransport {
     void send(byte[] message);
+
     void onReceive(BiConsumer<byte[], RpcContext> handler);
 }
 ```
@@ -2479,7 +2494,10 @@ Panama APIs are:
 MemorySegment segment = MemorySegment.allocateNative(32);
 VarHandle intHandle = MemoryLayouts.JAVA_INT.varHandle(PathElement.sequenceElement());
 
-intHandle.set(segment, 0, 42);
+intHandle.
+
+set(segment, 0,42);
+
 int value = (int) intHandle.get(segment, 0);
 ```
 
@@ -2487,6 +2505,7 @@ Same conceptually as:
 
 ```java
 UNSAFE.putInt(address, 42);
+
 int value = UNSAFE.getInt(address);
 ```
 
@@ -2576,7 +2595,9 @@ It gives you:
 ```java
 MemorySegment buffer = MemorySegment.allocateNative(FRAME_SIZE, arena);
 VarHandle LONG = MemoryLayouts.JAVA_LONG.varHandle();
-LONG.set(buffer, 0L, correlationId);
+LONG.
+
+set(buffer, 0L,correlationId);
 ```
 
 ---
@@ -2773,10 +2794,10 @@ interface RpcInterceptor {
 
 ```java
 RpcRuntime runtime = RpcRuntime.builder()
-    .withInterceptor(new TracingInterceptor())
-    .withInterceptor(new RetryInterceptor())
-    .withScheduler(ExecutorFactory.virtualThreads())
-    .build();
+        .withInterceptor(new TracingInterceptor())
+        .withInterceptor(new RetryInterceptor())
+        .withScheduler(ExecutorFactory.virtualThreads())
+        .build();
 ```
 
 Everything is configurable, injectable, testable.
@@ -2785,7 +2806,11 @@ Everything is configurable, injectable, testable.
 
 ```java
 ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor();
-exec.submit(() -> handleRpc(request));
+exec.
+
+submit(() ->
+
+handleRpc(request));
 ```
 
 Better than process isolation, but almost as safe — you can "crash" one virtual thread without affecting the whole
@@ -3327,16 +3352,20 @@ build/generated-sbe/AccountService.xml
 #### 🧪 2. **Java DTOs** (records or sealed interfaces)
 
 ```java
-record GetBalanceRequest(String accountId) {}
-record GetBalanceResponse(long balance) {}
+record GetBalanceRequest(String accountId) {
+}
+
+record GetBalanceResponse(long balance) {
+}
 ```
 
 #### 🔌 3. **Service Interface**
 
 ```java
 public interface AccountService {
-  GetBalanceResponse getBalance(GetBalanceRequest req);
-  TransferFundsResponse transferFunds(TransferFundsRequest req);
+    GetBalanceResponse getBalance(GetBalanceRequest req);
+
+    TransferFundsResponse transferFunds(TransferFundsRequest req);
 }
 ```
 
@@ -3344,7 +3373,7 @@ public interface AccountService {
 
 ```java
 public final class AccountServiceDispatcher {
-  public void dispatch(RpcRequest req, RpcResponder responder);
+    public void dispatch(RpcRequest req, RpcResponder responder);
 }
 ```
 
@@ -3352,9 +3381,9 @@ public final class AccountServiceDispatcher {
 
 ```java
 public final class AccountServiceClient implements AccountService {
-  public GetBalanceResponse getBalance(GetBalanceRequest req) {
-    // serializes via SBE, sends to server, awaits reply
-  }
+    public GetBalanceResponse getBalance(GetBalanceRequest req) {
+        // serializes via SBE, sends to server, awaits reply
+    }
 }
 ```
 
@@ -3367,8 +3396,12 @@ AccountService service = client.getService(AccountService.class);
 
 ```java
 RpcServer server = RpcServerBuilder.newBuilder().listen(9090).build();
-server.register(AccountService.class, new AccountServiceImpl());
-server.start();
+server.
+
+register(AccountService .class, new AccountServiceImpl());
+        server.
+
+start();
 ```
 
 ---
@@ -3379,8 +3412,8 @@ End-users can plug in features at the client/server runtime:
 
 ```java
 RpcClientBuilder builder = RpcClientBuilder.newBuilder()
-  .connect("localhost", 9090)
-  .withInterceptors(new RetryInterceptor(), new LoggingInterceptor());
+        .connect("localhost", 9090)
+        .withInterceptors(new RetryInterceptor(), new LoggingInterceptor());
 ```
 
 ---
@@ -4460,7 +4493,9 @@ Let me know when you're ready for:
 ```md
 # MVP.Express Schema Design
 
-This document outlines the structure and purpose of the `.mvpe.yaml` schema file used in MVP.Express to define RPC services, methods, and binary message schemas — inspired by Protocol Buffers and gRPC, but designed to work directly with SBE (Simple Binary Encoding).
+This document outlines the structure and purpose of the `.mvpe.yaml` schema file used in MVP.Express to define RPC
+services, methods, and binary message schemas — inspired by Protocol Buffers and gRPC, but designed to work directly
+with SBE (Simple Binary Encoding).
 
 ---
 
@@ -4474,13 +4509,15 @@ Unlike gRPC which uses Protobuf to define services and messages, MVP.Express def
 - Explicit message IDs (for routing and encoding)
 - Compatibility with SBE XML schema generation
 
-MVP.Express avoids text-based serialization altogether — focusing on **binary-first, high-performance, low-latency RPC**.
+MVP.Express avoids text-based serialization altogether — focusing on **binary-first, high-performance, low-latency RPC
+**.
 
 ---
 
 ## 📘 Schema Structure
 
 ### Top-level keys:
+
 ```yaml
 service: AccountService         # Logical name of the service
 id: 42                          # Unique numeric service ID
@@ -4549,22 +4586,26 @@ For each schema file:
 
 ```java
 public interface AccountService {
-  GetBalanceResponse getBalance(GetBalanceRequest req);
+    GetBalanceResponse getBalance(GetBalanceRequest req);
 }
 ```
 
 ### 2. DTOs
 
 ```java
-public record GetBalanceRequest(String accountId) {}
-public record GetBalanceResponse(long balance) {}
+public record GetBalanceRequest(String accountId) {
+}
+
+public record GetBalanceResponse(long balance) {
+}
 ```
 
 ### 3. SBE XML Schema
 
 ```xml
+
 <message name="GetBalanceRequest" id="101">
-  <field name="accountId" type="string" />
+    <field name="accountId" type="string"/>
 </message>
 ```
 
@@ -4698,20 +4739,20 @@ At codegen time, emit a **switch-style dispatcher**:
 
 ```java
 public class AccountServiceDispatcher implements RpcDispatcher {
-  private final AccountService impl;
+    private final AccountService impl;
 
-  public AccountServiceDispatcher(AccountService impl) {
-    this.impl = impl;
-  }
+    public AccountServiceDispatcher(AccountService impl) {
+        this.impl = impl;
+    }
 
-  @Override
-  public Object invoke(int methodId, Object req) {
-    return switch (methodId) {
-      case 1 -> impl.getBalance((GetBalanceRequest) req);
-      case 2 -> impl.transferFunds((TransferFundsRequest) req);
-      default -> throw new IllegalArgumentException("Unknown method ID");
-    };
-  }
+    @Override
+    public Object invoke(int methodId, Object req) {
+        return switch (methodId) {
+            case 1 -> impl.getBalance((GetBalanceRequest) req);
+            case 2 -> impl.transferFunds((TransferFundsRequest) req);
+            default -> throw new IllegalArgumentException("Unknown method ID");
+        };
+    }
 }
 ```
 
@@ -4732,8 +4773,8 @@ If you want more flexibility (e.g. for dynamic services):
 
 ```java
 Map<Integer, Function<Object, Object>> dispatchTable = Map.of(
-  1, req -> service.getBalance((GetBalanceRequest) req),
-  2, req -> service.transferFunds((TransferFundsRequest) req)
+        1, req -> service.getBalance((GetBalanceRequest) req),
+        2, req -> service.transferFunds((TransferFundsRequest) req)
 );
 ```
 

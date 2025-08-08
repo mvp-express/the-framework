@@ -1,8 +1,8 @@
 # `codec/`
 
-This module handles message encoding/decoding via Simple Binary Encoding (SBE).
+This module handles message encoding/decoding via Memory Yield & Rapid Access (MYRA).
 
-- Provides `SbeCodec` to wrap raw messages
+- Provides `MyraCodec` to wrap raw messages
 - Message envelope format and headers
 - Message ID mapping
 
