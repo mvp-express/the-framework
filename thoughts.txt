@@ -1,0 +1,3 @@
+ChatGPT: https://chatgpt.com/c/68b1b129-96f8-832b-9b0e-3f646cfc9d73
+- consumers host tcp servers
+- producers connect to consumers and publish messages
