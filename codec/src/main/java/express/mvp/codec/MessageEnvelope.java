@@ -11,11 +11,11 @@ import java.nio.ByteOrder;
  * true zero-copy performance. No heap allocations in hot paths.
  * <p>
  * Binary layout:
- * +----------------+-------------+-------------+----------------+
- * | Length (2B)    | Method ID   | Correlation ID (8B)          |
- * +----------------+-------------+-------------+----------------+
- * | Trace ID (16B optional) | Flags (1B) | Payload (MYRA)       |
- * +-------------------------------------------------------------+
+ * +----------------+------------------+---------------------+
+ * | Length (2B)    | Method ID (2B)   | Correlation ID (8B) |
+ * +----------------+------------------+---------------------+
+ * | Trace ID (16B optional)  | Flags (1B)  | Payload (MYRA) |
+ * +---------------------------------------------------------+
  */
 public class MessageEnvelope {
 
@@ -32,7 +32,8 @@ public class MessageEnvelope {
     // VarHandles for efficient memory access
     private static final ValueLayout.OfShort LENGTH_LAYOUT = ValueLayout.JAVA_SHORT.withOrder(ByteOrder.BIG_ENDIAN);
     private static final ValueLayout.OfShort METHOD_ID_LAYOUT = ValueLayout.JAVA_SHORT.withOrder(ByteOrder.BIG_ENDIAN);
-    private static final ValueLayout.OfLong CORRELATION_ID_LAYOUT = ValueLayout.JAVA_LONG.withOrder(ByteOrder.BIG_ENDIAN);
+    private static final ValueLayout.OfLong CORRELATION_ID_LAYOUT = ValueLayout.JAVA_LONG
+            .withOrder(ByteOrder.BIG_ENDIAN);
     private static final ValueLayout.OfByte FLAGS_LAYOUT = ValueLayout.JAVA_BYTE;
 
     // Message flags

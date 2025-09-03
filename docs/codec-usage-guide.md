@@ -19,7 +19,7 @@ The MVP.Express codec module provides:
 
 ## 🧱 Core Components
 
-### 1. ZeroCopyMyraCodec
+### 1. MyraCodec
 
 The main codec class that handles encoding/decoding of Java objects to/from binary format.
 
